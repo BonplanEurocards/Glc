@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROD EXPRESS - PREMIUM STUDIO</title>
+    <style>
+        :root { --neon: #00ff88; --gold: #ffcc00; --bg: #0d0d0f; --glass: rgba(255,255,255,0.03); }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', system-ui; margin: 0; padding: 15px; display: flex; justify-content: center; }
+        
+        .studio-pro {
+            width: 100%; max-width: 450px; background: #16161a; border: 1px solid #333;
+            border-radius: 35px; padding: 25px; box-shadow: 0 30px 100px rgba(0,0,0,0.9);
+            position: relative;
+        }
+
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 1.4rem; color: var(--neon); letter-spacing: 4px; text-transform: uppercase; margin: 0; }
+        .header p { font-size: 0.6rem; color: #666; letter-spacing: 2px; }
+
+        .module { background: var(--glass); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+        .label { font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 800; margin-bottom: 15px; display: block; }
+
+        .fx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .fx-btn { 
+            background: #222; border: 1px solid #333; color: #666; padding: 18px; 
+            border-radius: 15px; cursor: pointer; font-size: 0.7rem; font-weight: bold; transition: 0.4s;
+        }
+        .fx-btn.active { border-color: var(--neon); color: var(--neon); background: rgba(0,255,136,0.05); box-shadow: 0 0 20px rgba(0,255,136,0.1); }
+
+        .btn-gold { background: var(--gold); color: black; border: none; padding: 20px; width: 100%; border-radius: 15px; font-weight: 900; cursor: pointer; }
+        .btn-rec { background: #ff3e3e; color: white; border: none; padding: 22px; width: 100%; border-radius: 50px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 1rem; }
+        .btn-rec.recording { animation: pulse 1.5s infinite; background: #900; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        input[type="range"] { width: 100%; accent-color: var(--neon); }
+        audio { width: 100%; filter: invert(1); opacity: 0.5; margin-top: 15px; }
+        #status { font-family: monospace; font-size: 0.7rem; color: var(--neon); text-align: center; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="studio-pro">
+    <div class="header">
+        <h1>UNIVERSAL PRO</h1>
+        <p>AI COLLISION ENGINE • MASTER V8</p>
+    </div>
+
+    <div id="status">SYSTÈME PRÊT</div>
+
+    <div class="module">
+        <input type="file" id="fileIn" accept="audio/*,video/*" style="display:none">
+        <button class="btn-gold" onclick="document.getElementById('fileIn').click()">IMPORTER MON SON</button>
+    </div>
+
+    <div id="ui" style="display:none">
+        <div class="module">
+            <span class="label">Collision Speed : <span id="sVal" style="color:white">1.0</span>x</span>
+            <input type="range" id="sRange" min="0.5" max="2.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="module">
+            <span class="label">Réglages Collision & Voix</span>
+            <div class="fx-grid">
+                <button class="fx-btn" id="btn-sync">COLLISION RYTHME ⚡</button>
+                <button class="fx-btn" id="btn-punch">BASSES LOURDES 🥁</button>
+                <button class="fx-btn" id="btn-voice">VOIX STUDIO 🎙️</button>
+                <button class="fx-btn" id="btn-limit">POWER MASTER ⚡</button>
+            </div>
+        </div>
+
+        <div class="module">
+            <span class="label">Monitor</span>
+            <audio id="aud" controls playsinline></audio>
+        </div>
+
+        <button id="recBtn" class="btn-rec">DÉMARRER LE MIX FINAL</button>
+    </div>
+</div>
+
+<script>
+    let audioCtx, source, mediaRecorder, chunks = [];
+    let compressor, filter, voiceFilter;
+
+    const fileIn = document.getElementById('fileIn');
+    const aud = document.getElementById('aud');
+    const sRange = document.getElementById('sRange');
+    const sVal = document.getElementById('sVal');
+    const recBtn = document.getElementById('recBtn');
+    const status = document.getElementById('status');
+
+    fileIn.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            status.innerText = "MASTERING ACTIF : " + file.name.substring(0,15);
+            aud.src = URL.createObjectURL(file);
+            document.getElementById('ui').style.display = "block";
+            initStudio();
+        }
+    };
+
+    function initStudio() {
+        if (audioCtx) return;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioCtx.createMediaElementSource(aud);
+
+        filter = audioCtx.createBiquadFilter(); filter.type = "lowshelf"; filter.gain.value = 0;
+        voiceFilter = audioCtx.createBiquadFilter(); voiceFilter.type = "peaking"; voiceFilter.frequency.value = 3000; voiceFilter.gain.value = 0;
+        compressor = audioCtx.createDynamicsCompressor(); compressor.threshold.value = -10; compressor.ratio.value = 4;
+
+        source.connect(filter); filter.connect(voiceFilter); voiceFilter.connect(compressor); compressor.connect(audioCtx.destination);
+    }
+
+    document.getElementById('btn-sync').onclick = function() {
+        this.classList.toggle('active');
+        compressor.threshold.value = this.classList.contains('active') ? -45 : -10;
+        compressor.ratio.value = this.classList.contains('active') ? 16 : 4;
+    };
+
+    document.getElementById('btn-punch').onclick = function() {
+        this.classList.toggle('active');
+        filter.gain.value = this.classList.contains('active') ? 18 : 0;
+        filter.frequency.value = 100;
+    };
+
+    document.getElementById('btn-voice').onclick = function() {
+        this.classList.toggle('active');
+        voiceFilter.gain.value = this.classList.contains('active') ? 14 : 0;
+    };
+
+    document.getElementById('btn-limit').onclick = function() {
+        this.classList.toggle('active');
+        status.innerText = this.classList.contains('active') ? "PUISSANCE MAXIMUM ACTIVÉE" : "MASTERING ACTIF";
+    };
+
+    sRange.oninput = () => { aud.playbackRate = sRange.value; sVal.innerText = sRange.value; };
+
+    recBtn.onclick = () => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        if (recBtn.innerText === "DÉMARRER LE MIX FINAL") {
+            chunks = [];
+            const stream = aud.captureStream ? aud.captureStream() : aud.mozCaptureStream();
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = e => chunks.push(e.data);
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'audio/mp3' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = "STUDIO_PREMIUM_FINAL.mp3";
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            };
+            mediaRecorder.start(); aud.play();
+            recBtn.innerText = "STOP & TÉLÉCHARGER"; recBtn.classList.add('recording');
+        } else {
+            mediaRecorder.stop(); aud.pause();
+            recBtn.innerText = "DÉMARRER LE MIX FINAL"; recBtn.classList.remove('recording');
+        }
+    };
+    aud.onended = () => { if(mediaRecorder && mediaRecorder.state === "recording") recBtn.click(); };
+</script>
+</body>
+</html>
